@@ -1,48 +1,40 @@
 workflows:
-  ios-ipa-workflow:
-    name: iOS IPA Build (Codemagic)
-    max_build_duration: 60
+  ios-workflow:
+    name: iOS Release IPA Build
     instance_type: mac_mini_m2
+    max_build_duration: 60
     environment:
       flutter: stable
       xcode: latest
       cocoapods: default
-    triggering:
-      events:
-        - push
-        - tag
-      branch_patterns:
-        - pattern: '*'
-          include: true
-          source: true
     scripts:
       - name: Set up code signing settings on Xcode project
         script: |
           xcode-project use-profiles
-      - name: Get Flutter packages
+      - name: Get Flutter dependencies
         script: |
           flutter packages pub get
-      - name: Install CocoaPods dependencies
+      - name: Install CocoaPods
         script: |
           find . -name "Podfile" -execdir pod install \;
-      - name: Flutter build IPA
+      - name: Build iOS Release
         script: |
-          flutter build ipa --release --no-codesign
-      - name: Package Unsigned IPA (For Sideloading / AltStore / Scarlet / TrollStore)
+          flutter build ios --release --no-codesign
+      - name: Package IPA for iPhone
         script: |
           cd build/ios/iphoneos
           mkdir -p Payload
           cp -r Runner.app Payload/
-          zip -r ../../../Runner_Unsigned.ipa Payload
+          zip -r ../../../Mercedes_CarPlay_W212.ipa Payload
+          cd ../../..
     artifacts:
+      - "*.ipa"
       - build/ios/ipa/*.ipa
-      - Runner_Unsigned.ipa
       - /tmp/xcodebuild_logs/*.log
-      - flutter_drive.log
     publishing:
       email:
         recipients:
-          - user@example.com
+          - moetazkobbiss@gmail.com
         notify:
           success: true
           failure: true
