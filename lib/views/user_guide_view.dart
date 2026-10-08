@@ -64,18 +64,38 @@ class UserGuideView extends StatelessWidget {
 
           const SizedBox(height: 18),
 
-          // Section 1: Branchement & Câble
+          // Section 1: Branchement Spécifique Mercedes W212 NTG 4.5 (Câble AUX Vidéo)
           _buildGuideSection(
             car,
             stepNumber: '1',
-            title: 'Branchement du Câble & Connexion',
-            icon: Icons.cable,
-            badgeText: 'CÂBLE OU SANS FIL',
+            title: 'Connexion Câble AUX Vidéo Mercedes W212 (NTG 4.5 / 4.7)',
+            icon: Icons.directions_car,
+            badgeText: 'CONFIGURATION DÉTAILLÉE',
             badgeColor: car.accentBlue,
             content: [
-              _guideBullet(car, 'Mercedes W212 (NTG 4.5/4.7)', 'Connectez votre adaptateur Lightning/USB-C vers HDMI ou boîtier vidéo sur l\'entrée auxiliaire vidéo de la voiture.'),
-              _guideBullet(car, 'Écran TV / Moniteur PC', 'Branchez directement le câble HDMI sur votre TV ou écran d\'ordinateur en Full HD ou 4K.'),
-              _guideBullet(car, 'Détection Automatique', 'L\'application active immédiatement l\'écran externe dès que le signal vidéo est détecté.'),
+              _guideBullet(car, 'Prise Media Interface', 'Localisez la prise carrée Media Interface Mercedes dans la boîte à gants ou sous l\'accoudoir central.'),
+              _guideBullet(car, 'Câbles requis', '1) Câble Media Interface vers RCA (Réf Mercedes A 001 827 82 04 : Jaune Vidéo + Rouge/Blanc Audio).\n2) Adaptateur Apple Lightning vers HDMI/RCA.'),
+              _guideBullet(car, 'Bouton Tableau de Bord', 'Sur la console de la voiture, appuyez sur le bouton physique "DISC" ou "MEDIA".'),
+              _guideBullet(car, 'Molette COMAND', 'Avec la molette centrale, sélectionnez le menu "Vidéo" en bas, puis choisissez "AUX Vidéo" (ou "Entrée Auxiliaire Vidéo").'),
+              _guideBullet(car, 'Format Écran W212', 'Dans Options NTG, réglez le format sur "16:9" ou "Plein Écran" pour remplir parfaitement la dalle 800x480 de la W212.'),
+              _guideBullet(car, 'Son Stéréo Enceintes', 'Le son des radios en direct, vidéos et du GPS sort instantanément sur le système audio de la Mercedes.'),
+            ],
+          ),
+
+          const SizedBox(height: 16),
+
+          // Section 2: Branchement PC / Mac / TV
+          _buildGuideSection(
+            car,
+            stepNumber: '2',
+            title: 'Diffusion Écran PC, Tablette & Smart TV (Serveur Web)',
+            icon: Icons.laptop_mac,
+            badgeText: 'SANS FIL & USB',
+            badgeColor: Colors.purpleAccent,
+            content: [
+              _guideBullet(car, 'Par Câble USB PC', 'Branchez l\'iPhone en USB au PC, activez le "Partage de connexion USB" sur l\'iPhone, puis ouvrez Chrome sur http://172.20.10.1:8080.'),
+              _guideBullet(car, 'Par Wi-Fi Local', 'Connectez PC/TV au même Wi-Fi et ouvrez l\'adresse IP affichée dans l\'appli (${car.webServerUrl}).'),
+              _guideBullet(car, 'Fluidité 60 FPS', 'Le tableau de bord et les jauges AMG sont synchronisés en direct via WebSockets.'),
             ],
           ),
 
