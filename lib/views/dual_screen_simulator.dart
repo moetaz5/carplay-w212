@@ -5,6 +5,7 @@ import '../models/car_state.dart';
 import 'car_display_view.dart';
 import 'phone_controller_view.dart';
 import 'user_guide_view.dart';
+import 'web_broadcast_view.dart';
 
 enum SimulatorViewMode {
   dualSplit,
@@ -54,6 +55,18 @@ class _DualScreenSimulatorState extends State<DualScreenSimulator> {
           ],
         ),
         actions: [
+          // Web Broadcast Cast Button
+          IconButton(
+            tooltip: 'Diffuser sur PC / TV / Câble',
+            icon: Icon(Icons.cast, color: car.accentBlue, size: 20),
+            onPressed: () {
+              HapticFeedback.lightImpact();
+              Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const WebBroadcastView()),
+              );
+            },
+          ),
+
           // User Guide Button
           IconButton(
             tooltip: 'Guide d\'utilisation',

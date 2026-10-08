@@ -6,6 +6,7 @@ import 'package:audioplayers/audioplayers.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../services/display_service.dart';
 import '../services/real_hardware_service.dart';
+import '../services/web_broadcast_service.dart';
 
 enum CarDisplayMode {
   amgDashboard,
@@ -263,6 +264,13 @@ class CarState extends ChangeNotifier {
   bool get hasRadarAlert => _hasRadarAlert;
   String get radarAlertText => _radarAlertText;
 
+  // Web Broadcast Server
+  bool get isWebServerRunning => WebBroadcastService().isRunning;
+  String get webServerUrl => WebBroadcastService().serverUrl;
+  String get webServerIp => WebBroadcastService().serverIp;
+  int get webServerPort => WebBroadcastService().serverPort;
+  int get connectedWebClients => WebBroadcastService().connectedClientsCount;
+
   CarState({bool initHardware = true}) {
     if (initHardware) {
       _initRealHardware();
@@ -270,6 +278,11 @@ class CarState extends ChangeNotifier {
   }
 
   void _initRealHardware() {
+    // 0. Start Web Broadcast Server for PC / Tablet / TV screens
+    WebBroadcastService().startServer(this).then((_) {
+      notifyListeners();
+    });
+
     // 1. External Display connection detection
     DisplayDetectionService().init((isConnected) {
       setHdmiConnection(isConnected);
@@ -494,6 +507,7 @@ class CarState extends ChangeNotifier {
   void dispose() {
     _audioPlayer.dispose();
     _videoPlayerController?.dispose();
+    WebBroadcastService().dispose();
     DisplayDetectionService().dispose();
     RealHardwareService().dispose();
     super.dispose();

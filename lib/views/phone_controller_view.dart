@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import 'package:video_player/video_player.dart';
 import '../models/car_state.dart';
 import 'user_guide_view.dart';
+import 'web_broadcast_view.dart';
 
 class PhoneControllerView extends StatelessWidget {
   const PhoneControllerView({super.key});
@@ -61,6 +62,16 @@ class PhoneControllerView extends StatelessWidget {
         ),
         actions: [
           IconButton(
+            tooltip: 'Diffuser sur PC / TV / Câble',
+            icon: Icon(Icons.cast, color: car.accentBlue, size: 20),
+            onPressed: () {
+              HapticFeedback.lightImpact();
+              Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const WebBroadcastView()),
+              );
+            },
+          ),
+          IconButton(
             tooltip: 'Guide d\'utilisation',
             icon: Icon(Icons.help_outline, color: car.accentBlue, size: 20),
             onPressed: () {
@@ -97,6 +108,92 @@ class PhoneControllerView extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // 0. Bannière Diffusion PC / TV & Branchement Câble
+            InkWell(
+              borderRadius: BorderRadius.circular(16),
+              onTap: () {
+                Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => const WebBroadcastView()),
+                );
+              },
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                decoration: BoxDecoration(
+                  color: car.bgCard,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(
+                    color: car.isWebServerRunning ? car.accentBlue : car.borderGlow,
+                    width: 1.5,
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: car.accentBlue.withValues(alpha: 0.1),
+                      blurRadius: 10,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
+                ),
+                child: Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: car.accentBlue.withValues(alpha: 0.15),
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(Icons.cast_connected, color: car.accentBlue, size: 22),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Flexible(
+                                child: Text(
+                                  'DIFFUSION PC, TV & CÂBLE',
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TextStyle(
+                                    color: car.textPrimary,
+                                    fontWeight: FontWeight.w900,
+                                    fontSize: 12.5,
+                                    letterSpacing: 0.8,
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 6),
+                              Container(
+                                width: 8,
+                                height: 8,
+                                decoration: BoxDecoration(
+                                  color: car.isWebServerRunning ? car.accentGreen : car.accentRed,
+                                  shape: BoxShape.circle,
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 3),
+                          Text(
+                            'Ouvrir sur PC: ${car.webServerUrl}',
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              color: car.accentBlue,
+                              fontSize: 11,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Icon(Icons.chevron_right, color: car.textSecondary, size: 20),
+                  ],
+                ),
+              ),
+            ),
+
+            const SizedBox(height: 14),
+
             // 1. Autorisations Matérielles iPhone
             _buildPermissionsCard(context, car),
 
