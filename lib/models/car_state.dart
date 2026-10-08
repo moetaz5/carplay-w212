@@ -2,6 +2,8 @@ import 'dart:async';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:video_player/video_player.dart';
+import 'package:audioplayers/audioplayers.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../services/display_service.dart';
 import '../services/real_hardware_service.dart';
 
@@ -11,6 +13,7 @@ enum CarDisplayMode {
   carPlaySplit,
   videoPlayer,
   navigation,
+  radioMusic,
   diagnostics,
   ntgClassic,
 }
@@ -41,6 +44,22 @@ enum TargetScreenType {
   tabletHd,    // 4:3 iPad / Tablette
   tvMonitor169,// 16:9 TV / Moniteur PC 1080p/4K
   ultraWide219,// 21:9 PC Ultra-Wide
+}
+
+class RadioStation {
+  final String name;
+  final String genre;
+  final String streamUrl;
+  final IconData icon;
+  final Color color;
+
+  const RadioStation({
+    required this.name,
+    required this.genre,
+    required this.streamUrl,
+    required this.icon,
+    required this.color,
+  });
 }
 
 class CarState extends ChangeNotifier {
@@ -174,14 +193,62 @@ class CarState extends ChangeNotifier {
   bool _isRealVideoLoaded = false;
   bool get isRealVideoLoaded => _isRealVideoLoaded;
 
-  // 9. Siri / Voice Assistant State
+  // 9. Real Live Radio Streaming Service
+  final AudioPlayer _audioPlayer = AudioPlayer();
+  bool _isRadioPlaying = false;
+  bool get isRadioPlaying => _isRadioPlaying;
+
+  int _selectedRadioIndex = 0;
+  int get selectedRadioIndex => _selectedRadioIndex;
+
+  final List<RadioStation> radioStations = const [
+    RadioStation(
+      name: 'NRJ Hits',
+      genre: 'Pop / Top 40',
+      streamUrl: 'https://scdn.nrjaudio.fm/audio1/fr/30001/mp3_128.mp3',
+      icon: Icons.radio,
+      color: Color(0xFFE11D48),
+    ),
+    RadioStation(
+      name: 'Skyrock',
+      genre: 'Rap & Urban',
+      streamUrl: 'https://icecast.skyrock.net/s/natio_mp3_128k',
+      icon: Icons.headphones,
+      color: Color(0xFF0070F3),
+    ),
+    RadioStation(
+      name: 'RMC Info Talk Sport',
+      genre: 'News & Sports',
+      streamUrl: 'https://audio.bfmtv.com/rmcradio_128.mp3',
+      icon: Icons.sports_soccer,
+      color: Color(0xFFD97706),
+    ),
+    RadioStation(
+      name: 'Radio FG Deep',
+      genre: 'Electro & House',
+      streamUrl: 'https://radiofg.immanens.com/fgd.mp3',
+      icon: Icons.graphic_eq,
+      color: Color(0xFF9333EA),
+    ),
+    RadioStation(
+      name: 'Smooth Chill Jazz',
+      genre: 'Lounge & Chill',
+      streamUrl: 'https://media-the.musicradio.com/SmoothChillMP3',
+      icon: Icons.nightlife,
+      color: Color(0xFF059669),
+    ),
+  ];
+
+  RadioStation get currentRadio => radioStations[_selectedRadioIndex];
+
+  // 10. Siri / Voice Assistant State
   bool _isVoiceAssistantActive = false;
   bool get isVoiceAssistantActive => _isVoiceAssistantActive;
 
   String _voicePrompt = 'Prêt pour commande vocale...';
   String get voicePrompt => _voicePrompt;
 
-  // 10. Navigation
+  // 11. Navigation
   String _navDestination = 'Position GPS Satellite en Direct';
   String get navDestination => _navDestination;
 
@@ -255,7 +322,52 @@ class CarState extends ChangeNotifier {
     );
   }
 
-  // --- ACTIONS ---
+  // --- ACTIONS RADIO & AUDIO ---
+  Future<void> selectAndPlayRadio(int index) async {
+    _selectedRadioIndex = index.clamp(0, radioStations.length - 1);
+    try {
+      await _audioPlayer.stop();
+      await _audioPlayer.play(UrlSource(currentRadio.streamUrl));
+      _isRadioPlaying = true;
+    } catch (e) {
+      debugPrint('Radio play error: $e');
+      _isRadioPlaying = false;
+    }
+    notifyListeners();
+  }
+
+  Future<void> toggleRadio() async {
+    if (_isRadioPlaying) {
+      await _audioPlayer.pause();
+      _isRadioPlaying = false;
+    } else {
+      await selectAndPlayRadio(_selectedRadioIndex);
+    }
+    notifyListeners();
+  }
+
+  Future<void> stopRadio() async {
+    await _audioPlayer.stop();
+    _isRadioPlaying = false;
+    notifyListeners();
+  }
+
+  // Launch Turn-by-Turn Navigation in Apple Maps or Google Maps
+  Future<void> launchMapsNavigation(String query) async {
+    final Uri url = Platform.isIOS
+        ? Uri.parse('maps://maps.apple.com/?q=$query')
+        : Uri.parse('https://www.google.com/maps/search/?api=1&query=$query');
+
+    try {
+      if (await canLaunchUrl(url)) {
+        await launchUrl(url, mode: LaunchMode.externalApplication);
+      }
+    } catch (e) {
+      debugPrint('Maps launch error: $e');
+    }
+  }
+
+  // --- ACTIONS THEMES & MODES ---
   void toggleThemeMode() {
     _isLightMode = !_isLightMode;
     notifyListeners();
@@ -380,6 +492,7 @@ class CarState extends ChangeNotifier {
 
   @override
   void dispose() {
+    _audioPlayer.dispose();
     _videoPlayerController?.dispose();
     DisplayDetectionService().dispose();
     RealHardwareService().dispose();

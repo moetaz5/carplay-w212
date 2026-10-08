@@ -45,13 +45,13 @@ class PhoneControllerView extends StatelessWidget {
                     ),
                   ),
                   Text(
-                    car.isHdmiConnected ? '● Écran W212 Connecté' : '○ Câble Déconnecté',
+                    car.isHdmiConnected ? '● Écran W212 Connecté' : '○ Mode Autonome Actif',
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(
                       fontSize: 10,
                       color: car.isHdmiConnected
                           ? (car.isLightMode ? const Color(0xFF059669) : Colors.greenAccent)
-                          : Colors.redAccent,
+                          : const Color(0xFFD97706),
                     ),
                   ),
                 ],
@@ -88,18 +88,6 @@ class PhoneControllerView extends StatelessWidget {
             onPressed: () {
               HapticFeedback.mediumImpact();
               car.triggerVoiceAssistant('Microphone iPhone en écoute...');
-            },
-          ),
-          IconButton(
-            tooltip: 'Simuler Branchement Câble',
-            icon: Icon(
-              car.isHdmiConnected ? Icons.cable : Icons.link_off,
-              color: car.isHdmiConnected ? car.accentBlue : car.textSecondary,
-              size: 20,
-            ),
-            onPressed: () {
-              HapticFeedback.lightImpact();
-              car.toggleHdmiConnection();
             },
           ),
         ],
@@ -144,7 +132,22 @@ class PhoneControllerView extends StatelessWidget {
 
             const SizedBox(height: 16),
 
-            // 4. Vidéos de l'iPhone (Lecteur Vidéo Réel)
+            // 4. Radios Web en Direct & Musique
+            Text(
+              'RADIOS WEB EN DIRECT & AUDIO',
+              style: TextStyle(
+                color: car.textSecondary,
+                fontSize: 11,
+                fontWeight: FontWeight.bold,
+                letterSpacing: 1.2,
+              ),
+            ),
+            const SizedBox(height: 8),
+            _buildRadioPlayerCard(context, car),
+
+            const SizedBox(height: 16),
+
+            // 5. Vidéos de l'iPhone (Lecteur Vidéo Réel)
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -177,7 +180,7 @@ class PhoneControllerView extends StatelessWidget {
 
             const SizedBox(height: 16),
 
-            // 5. Capteurs et Télémétrie en Direct (Données Réelles)
+            // 6. Capteurs et Télémétrie en Direct (Données Réelles)
             Text(
               'TÉLÉMÉTRIE GPS & CAPTEURS EN DIRECT',
               style: TextStyle(
@@ -192,7 +195,7 @@ class PhoneControllerView extends StatelessWidget {
 
             const SizedBox(height: 16),
 
-            // 6. Profils et Personnalisation Véhicule
+            // 7. Profils et Personnalisation Véhicule
             _buildAudioAndAmbientCard(context, car),
           ],
         ),
@@ -433,6 +436,7 @@ class PhoneControllerView extends StatelessWidget {
     final modes = [
       {'mode': CarDisplayMode.amgDashboard, 'title': 'AMG Telemetry', 'icon': Icons.speed, 'desc': 'Compteurs Réels'},
       {'mode': CarDisplayMode.carPlaySplit, 'title': 'CarPlay 2.0', 'icon': Icons.splitscreen, 'desc': 'Multi-Widgets'},
+      {'mode': CarDisplayMode.radioMusic, 'title': 'Radios Web', 'icon': Icons.radio, 'desc': 'En Direct'},
       {'mode': CarDisplayMode.carPlayHome, 'title': 'App Grid', 'icon': Icons.apps, 'desc': 'Applications'},
       {'mode': CarDisplayMode.videoPlayer, 'title': 'Vidéos HD', 'icon': Icons.movie_creation, 'desc': 'Films Galerie'},
       {'mode': CarDisplayMode.navigation, 'title': 'GPS Navi', 'icon': Icons.navigation, 'desc': 'Satellite'},
@@ -511,7 +515,100 @@ class PhoneControllerView extends StatelessWidget {
     );
   }
 
-  // 4. Real Video Card
+  // 4. Radio Player Card
+  Widget _buildRadioPlayerCard(BuildContext context, CarState car) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: car.bgCard,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: car.borderGlow),
+        boxShadow: car.isLightMode
+            ? [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.04),
+                  blurRadius: 8,
+                  offset: const Offset(0, 2),
+                ),
+              ]
+            : null,
+      ),
+      child: Column(
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 42,
+                height: 42,
+                decoration: BoxDecoration(
+                  color: car.currentRadio.color,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Icon(car.currentRadio.icon, color: Colors.white, size: 22),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      car.currentRadio.name,
+                      style: TextStyle(color: car.textPrimary, fontWeight: FontWeight.bold, fontSize: 12),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    Text(
+                      '${car.currentRadio.genre} • Flux Réel',
+                      style: TextStyle(color: car.textSecondary, fontSize: 10),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                ),
+              ),
+              IconButton(
+                onPressed: () => car.toggleRadio(),
+                icon: Icon(
+                  car.isRadioPlaying ? Icons.pause_circle_filled : Icons.play_circle_filled,
+                  color: car.currentRadio.color,
+                  size: 34,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              children: car.radioStations.asMap().entries.map((entry) {
+                final idx = entry.key;
+                final station = entry.value;
+                final isCurrent = car.selectedRadioIndex == idx;
+
+                return Padding(
+                  padding: const EdgeInsets.only(right: 6),
+                  child: ActionChip(
+                    avatar: Icon(station.icon, size: 14, color: isCurrent ? Colors.white : station.color),
+                    label: Text(
+                      station.name,
+                      style: TextStyle(
+                        fontSize: 10,
+                        color: isCurrent ? Colors.white : car.textPrimary,
+                        fontWeight: isCurrent ? FontWeight.bold : FontWeight.normal,
+                      ),
+                    ),
+                    backgroundColor: isCurrent ? station.color : car.bgCardSubtle,
+                    padding: const EdgeInsets.symmetric(horizontal: 4),
+                    onPressed: () => car.selectAndPlayRadio(idx),
+                  ),
+                );
+              }).toList(),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // 5. Real Video Card
   Widget _buildRealVideoCard(BuildContext context, CarState car) {
     return Container(
       padding: const EdgeInsets.all(12),
@@ -619,7 +716,7 @@ class PhoneControllerView extends StatelessWidget {
     );
   }
 
-  // 5. Live Sensors and Telemetry Card (100% Real Hardware)
+  // 6. Live Sensors and Telemetry Card (100% Real Hardware)
   Widget _buildLiveSensorsCard(BuildContext context, CarState car) {
     return Container(
       padding: const EdgeInsets.all(12),
@@ -700,7 +797,7 @@ class PhoneControllerView extends StatelessWidget {
     );
   }
 
-  // 6. Audio Profile & Ambient Lighting
+  // 7. Audio Profile & Ambient Lighting
   Widget _buildAudioAndAmbientCard(BuildContext context, CarState car) {
     final colors = [
       {'name': 'Cyber Blue', 'color': const Color(0xFF0070F3)},

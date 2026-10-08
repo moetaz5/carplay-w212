@@ -2,14 +2,23 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 import 'package:video_player/video_player.dart';
+import 'package:flutter_map/flutter_map.dart';
+import 'package:latlong2/latlong.dart';
 import '../models/car_state.dart';
 import '../widgets/amg_cluster_painter.dart';
 import '../widgets/siri_wave_painter.dart';
 import '../widgets/tpms_car_painter.dart';
 import 'user_guide_view.dart';
 
-class CarDisplayView extends StatelessWidget {
+class CarDisplayView extends StatefulWidget {
   const CarDisplayView({super.key});
+
+  @override
+  State<CarDisplayView> createState() => _CarDisplayViewState();
+}
+
+class _CarDisplayViewState extends State<CarDisplayView> {
+  final MapController _mapController = MapController();
 
   @override
   Widget build(BuildContext context) {
@@ -91,16 +100,16 @@ class CarDisplayView extends StatelessWidget {
           ),
           const SizedBox(height: 8),
           Text(
-            'Branchez votre iPhone / Câble HDMI pour lancer l\'interface',
+            'Branchez votre iPhone / Câble HDMI ou utilisez le mode autonome',
             style: TextStyle(color: car.textSecondary, fontSize: 11),
           ),
           const SizedBox(height: 20),
           ElevatedButton.icon(
             onPressed: () => car.toggleHdmiConnection(),
             icon: const Icon(Icons.cable, size: 16),
-            label: const Text('Simuler Connexion Écran', style: TextStyle(fontSize: 11)),
+            label: const Text('Activer Écran Voiture', style: TextStyle(fontSize: 11)),
             style: ElevatedButton.styleFrom(
-              backgroundColor: car.isLightMode ? const Color(0xFF0284C7) : const Color(0xFF1E2D4A),
+              backgroundColor: car.accentBlue,
               foregroundColor: Colors.white,
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
@@ -273,6 +282,8 @@ class CarDisplayView extends StatelessWidget {
         return _buildVideoPlayer(context, car);
       case CarDisplayMode.navigation:
         return _buildNavigation(context, car);
+      case CarDisplayMode.radioMusic:
+        return _buildRadioMusic(context, car);
       case CarDisplayMode.diagnostics:
         return _buildDiagnostics(context, car);
       case CarDisplayMode.ntgClassic:
@@ -280,7 +291,7 @@ class CarDisplayView extends StatelessWidget {
     }
   }
 
-  // 1. AMG PERFORMANCE INSTRUMENT CLUSTER (100% Real GPS Data)
+  // 1. AMG PERFORMANCE INSTRUMENT CLUSTER
   Widget _buildAmgDashboard(BuildContext context, CarState car) {
     return Padding(
       padding: const EdgeInsets.all(6.0),
@@ -577,10 +588,10 @@ class CarDisplayView extends StatelessWidget {
                               width: 44,
                               height: 44,
                               decoration: BoxDecoration(
-                                color: car.accentBlue.withValues(alpha: car.isLightMode ? 0.15 : 0.2),
+                                color: car.currentRadio.color.withValues(alpha: car.isLightMode ? 0.15 : 0.2),
                                 borderRadius: BorderRadius.circular(10),
                               ),
-                              child: Icon(Icons.video_library, color: car.accentBlue, size: 24),
+                              child: Icon(car.currentRadio.icon, color: car.currentRadio.color, size: 24),
                             ),
                             const SizedBox(width: 10),
                             Expanded(
@@ -588,12 +599,12 @@ class CarDisplayView extends StatelessWidget {
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Text(
-                                    car.isRealVideoLoaded ? car.realVideoTitle : 'Vidéothèque iPhone',
+                                    car.currentRadio.name,
                                     style: TextStyle(color: car.textPrimary, fontWeight: FontWeight.bold, fontSize: 12),
                                     overflow: TextOverflow.ellipsis,
                                   ),
                                   Text(
-                                    car.isRealVideoLoaded ? 'Prêt pour diffusion HD' : 'Sélectionnez depuis l\'iPhone',
+                                    '${car.currentRadio.genre} • En direct',
                                     style: TextStyle(color: car.textSecondary, fontSize: 10),
                                     overflow: TextOverflow.ellipsis,
                                   ),
@@ -603,16 +614,22 @@ class CarDisplayView extends StatelessWidget {
                           ],
                         ),
                         const Spacer(),
-                        ElevatedButton.icon(
-                          onPressed: () => car.pickAndPlayRealVideo(),
-                          icon: const Icon(Icons.add_to_photos, size: 16),
-                          label: const Text('Choisir une vidéo de l\'iPhone', style: TextStyle(fontSize: 11)),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: car.accentBlue,
-                            foregroundColor: Colors.white,
-                            minimumSize: const Size(double.infinity, 36),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                          ),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: ElevatedButton.icon(
+                                onPressed: () => car.toggleRadio(),
+                                icon: Icon(car.isRadioPlaying ? Icons.pause : Icons.play_arrow, size: 16),
+                                label: Text(car.isRadioPlaying ? 'Pause Radio' : 'Écouter Radio', style: const TextStyle(fontSize: 11)),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: car.currentRadio.color,
+                                  foregroundColor: Colors.white,
+                                  minimumSize: const Size(double.infinity, 36),
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
                       ],
                     ),
@@ -677,20 +694,21 @@ class CarDisplayView extends StatelessWidget {
     final apps = [
       {'name': 'Tableau Bord', 'icon': Icons.splitscreen, 'color': const Color(0xFF0284C7), 'mode': CarDisplayMode.carPlaySplit},
       {'name': 'GPS Navi', 'icon': Icons.map, 'color': const Color(0xFF2563EB), 'mode': CarDisplayMode.navigation},
+      {'name': 'Radios Web', 'icon': Icons.radio, 'color': const Color(0xFF059669), 'mode': CarDisplayMode.radioMusic},
       {'name': 'Vidéos iPhone', 'icon': Icons.video_library, 'color': const Color(0xFFE11D48), 'action': () => car.pickAndPlayRealVideo()},
       {'name': 'AMG Telemetry', 'icon': Icons.speed, 'color': const Color(0xFF0891B2), 'mode': CarDisplayMode.amgDashboard},
       {'name': 'Diagnostics', 'icon': Icons.car_repair, 'color': const Color(0xFFD97706), 'mode': CarDisplayMode.diagnostics},
       {'name': 'Siri Vocal', 'icon': Icons.mic, 'color': const Color(0xFF9333EA), 'action': () => car.triggerVoiceAssistant('Microphone iPhone en direct...')},
       {'name': 'NTG Classic', 'icon': Icons.album, 'color': const Color(0xFF4F46E5), 'mode': CarDisplayMode.ntgClassic},
-      {'name': 'Guide & Aide', 'icon': Icons.menu_book, 'color': const Color(0xFF059669), 'action': () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const UserGuideView()))},
+      {'name': 'Guide & Aide', 'icon': Icons.menu_book, 'color': const Color(0xFF0D9488), 'action': () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const UserGuideView()))},
     ];
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
       child: GridView.builder(
         gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-          crossAxisCount: 4,
-          childAspectRatio: 1.25,
+          crossAxisCount: 5,
+          childAspectRatio: 1.15,
           crossAxisSpacing: 10,
           mainAxisSpacing: 8,
         ),
@@ -749,7 +767,370 @@ class CarDisplayView extends StatelessWidget {
     );
   }
 
-  // 4. REAL VIDEO PLAYER WIDGET
+  // 4. REAL INTERACTIVE OPENSTREETMAP GPS NAVIGATION MAP
+  Widget _buildNavigation(BuildContext context, CarState car) {
+    final userPos = LatLng(car.gpsLatitude, car.gpsLongitude);
+
+    return Stack(
+      children: [
+        // Live Real OpenStreetMap Map
+        FlutterMap(
+          mapController: _mapController,
+          options: MapOptions(
+            initialCenter: userPos,
+            initialZoom: 15.0,
+            initialRotation: car.gpsHeading,
+          ),
+          children: [
+            TileLayer(
+              urlTemplate: car.isLightMode
+                  ? 'https://tile.openstreetmap.org/{z}/{x}/{y}.png'
+                  : 'https://cartodb-basemaps-a.global.ssl.fastly.net/dark_all/{z}/{x}/{y}.png',
+              userAgentPackageName: 'com.mercedes.custom.carplay_w212',
+            ),
+            MarkerLayer(
+              markers: [
+                Marker(
+                  point: userPos,
+                  width: 50,
+                  height: 50,
+                  child: Stack(
+                    alignment: Alignment.center,
+                    children: [
+                      Container(
+                        width: 40,
+                        height: 40,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: car.accentBlue.withValues(alpha: 0.25),
+                        ),
+                      ),
+                      Container(
+                        width: 22,
+                        height: 22,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: car.accentBlue,
+                          border: Border.all(color: Colors.white, width: 2.5),
+                          boxShadow: const [
+                            BoxShadow(color: Colors.black38, blurRadius: 4),
+                          ],
+                        ),
+                        child: const Icon(Icons.navigation, color: Colors.white, size: 12),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+
+        // Top Navigation Header
+        Positioned(
+          left: 10,
+          top: 10,
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+            decoration: BoxDecoration(
+              color: car.bgCard.withValues(alpha: 0.95),
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: car.accentBlue.withValues(alpha: 0.4)),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.1),
+                  blurRadius: 8,
+                ),
+              ],
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(5),
+                  decoration: BoxDecoration(
+                    color: car.accentBlue,
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: const Icon(Icons.navigation, color: Colors.white, size: 14),
+                ),
+                const SizedBox(width: 8),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      'GPS : ${car.gpsLatitude.toStringAsFixed(4)}, ${car.gpsLongitude.toStringAsFixed(4)}',
+                      style: TextStyle(
+                        color: car.textPrimary,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 10,
+                      ),
+                    ),
+                    Text(
+                      'Altitude : ${car.gpsAltitude.round()}m • Cap : ${car.gpsHeading.round()}°',
+                      style: TextStyle(color: car.accentBlue, fontSize: 8, fontWeight: FontWeight.bold),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+
+        // Map Control Buttons (Recenter & Quick POIs)
+        Positioned(
+          right: 10,
+          top: 10,
+          child: Column(
+            children: [
+              _mapActionButton(
+                icon: Icons.my_location,
+                tooltip: 'Recentrer sur ma position',
+                color: car.accentBlue,
+                onTap: () {
+                  _mapController.move(userPos, 16.0);
+                },
+              ),
+              const SizedBox(height: 6),
+              _mapActionButton(
+                icon: Icons.local_gas_station,
+                tooltip: 'Stations Essence à proximité',
+                color: const Color(0xFFEA580C),
+                onTap: () => car.launchMapsNavigation('station essence'),
+              ),
+              const SizedBox(height: 6),
+              _mapActionButton(
+                icon: Icons.local_parking,
+                tooltip: 'Parkings à proximité',
+                color: const Color(0xFF2563EB),
+                onTap: () => car.launchMapsNavigation('parking'),
+              ),
+            ],
+          ),
+        ),
+
+        // Speed Limit & Current GPS Speed Bottom Right
+        Positioned(
+          right: 10,
+          bottom: 10,
+          child: Row(
+            children: [
+              Container(
+                width: 36,
+                height: 36,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: Colors.white,
+                  border: Border.all(color: Colors.red, width: 2.5),
+                ),
+                child: Center(
+                  child: Text(
+                    '${car.speedLimit}',
+                    style: const TextStyle(
+                      color: Colors.black,
+                      fontWeight: FontWeight.w900,
+                      fontSize: 13,
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                decoration: BoxDecoration(
+                  color: car.bgCard.withValues(alpha: 0.95),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: car.borderGlow),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Text(
+                      '${car.speed.round()} KM/H GPS',
+                      style: TextStyle(
+                        color: car.isLightMode ? const Color(0xFF059669) : Colors.greenAccent,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 11,
+                      ),
+                    ),
+                    Text('Satellite en Direct', style: TextStyle(color: car.textSecondary, fontSize: 9)),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _mapActionButton({
+    required IconData icon,
+    required String tooltip,
+    required Color color,
+    required VoidCallback onTap,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.all(8),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          shape: BoxShape.circle,
+          boxShadow: const [
+            BoxShadow(color: Colors.black26, blurRadius: 4, offset: Offset(0, 2)),
+          ],
+        ),
+        child: Icon(icon, color: color, size: 18),
+      ),
+    );
+  }
+
+  // 5. REAL WEB RADIOS & AUDIO STREAMING SCREEN
+  Widget _buildRadioMusic(BuildContext context, CarState car) {
+    return Padding(
+      padding: const EdgeInsets.all(12),
+      child: Row(
+        children: [
+          // Left: Current Station Banner
+          Expanded(
+            flex: 5,
+            child: Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [
+                    car.currentRadio.color.withValues(alpha: car.isLightMode ? 0.15 : 0.35),
+                    car.bgCard,
+                  ],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: car.currentRadio.color.withValues(alpha: 0.5)),
+              ),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Container(
+                    width: 70,
+                    height: 70,
+                    decoration: BoxDecoration(
+                      color: car.currentRadio.color,
+                      shape: BoxShape.circle,
+                      boxShadow: [
+                        BoxShadow(
+                          color: car.currentRadio.color.withValues(alpha: 0.4),
+                          blurRadius: 15,
+                        ),
+                      ],
+                    ),
+                    child: Icon(car.currentRadio.icon, color: Colors.white, size: 36),
+                  ),
+                  const SizedBox(height: 12),
+                  Text(
+                    car.currentRadio.name,
+                    style: TextStyle(
+                      color: car.textPrimary,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                  Text(
+                    '${car.currentRadio.genre} • Flux Audio Réel',
+                    style: TextStyle(color: car.textSecondary, fontSize: 11),
+                  ),
+                  const SizedBox(height: 14),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      IconButton(
+                        onPressed: () {
+                          final prevIdx = (car.selectedRadioIndex - 1 + car.radioStations.length) % car.radioStations.length;
+                          car.selectAndPlayRadio(prevIdx);
+                        },
+                        icon: Icon(Icons.skip_previous, color: car.textPrimary, size: 28),
+                      ),
+                      const SizedBox(width: 8),
+                      IconButton(
+                        onPressed: () => car.toggleRadio(),
+                        icon: Icon(
+                          car.isRadioPlaying ? Icons.pause_circle_filled : Icons.play_circle_filled,
+                          color: car.currentRadio.color,
+                          size: 48,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      IconButton(
+                        onPressed: () {
+                          final nextIdx = (car.selectedRadioIndex + 1) % car.radioStations.length;
+                          car.selectAndPlayRadio(nextIdx);
+                        },
+                        icon: Icon(Icons.skip_next, color: car.textPrimary, size: 28),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+
+          const SizedBox(width: 12),
+
+          // Right: Station List
+          Expanded(
+            flex: 5,
+            child: ListView.builder(
+              itemCount: car.radioStations.length,
+              itemBuilder: (context, index) {
+                final station = car.radioStations[index];
+                final isSelected = car.selectedRadioIndex == index;
+
+                return Container(
+                  margin: const EdgeInsets.only(bottom: 6),
+                  decoration: BoxDecoration(
+                    color: isSelected
+                        ? station.color.withValues(alpha: car.isLightMode ? 0.15 : 0.25)
+                        : car.bgCard,
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(
+                      color: isSelected ? station.color : car.borderGlow,
+                    ),
+                  ),
+                  child: ListTile(
+                    dense: true,
+                    leading: Icon(station.icon, color: station.color, size: 20),
+                    title: Text(
+                      station.name,
+                      style: TextStyle(
+                        color: isSelected ? station.color : car.textPrimary,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 11,
+                      ),
+                    ),
+                    subtitle: Text(
+                      station.genre,
+                      style: TextStyle(color: car.textSecondary, fontSize: 9),
+                    ),
+                    trailing: Icon(
+                      isSelected && car.isRadioPlaying ? Icons.graphic_eq : Icons.play_arrow,
+                      color: station.color,
+                      size: 18,
+                    ),
+                    onTap: () => car.selectAndPlayRadio(index),
+                  ),
+                );
+              },
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // 6. REAL VIDEO PLAYER WIDGET
   Widget _buildVideoPlayer(BuildContext context, CarState car) {
     if (car.videoPlayerController != null && car.videoPlayerController!.value.isInitialized) {
       return Stack(
@@ -868,130 +1249,7 @@ class CarDisplayView extends StatelessWidget {
     );
   }
 
-  // 5. GPS NAVIGATION MAP
-  Widget _buildNavigation(BuildContext context, CarState car) {
-    return Stack(
-      children: [
-        Container(
-          width: double.infinity,
-          height: double.infinity,
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: car.isLightMode
-                  ? [const Color(0xFFE2E8F0), const Color(0xFFCBD5E1)]
-                  : [const Color(0xFF131B26), const Color(0xFF0A0F17)],
-            ),
-          ),
-          child: CustomPaint(
-            painter: _AdvancedMapPainter(isLightMode: car.isLightMode),
-          ),
-        ),
-        Positioned(
-          left: 10,
-          top: 10,
-          child: Container(
-            padding: const EdgeInsets.all(10),
-            decoration: BoxDecoration(
-              color: car.bgCard.withValues(alpha: 0.95),
-              borderRadius: BorderRadius.circular(10),
-              border: Border.all(color: car.accentBlue.withValues(alpha: 0.4)),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.1),
-                  blurRadius: 10,
-                ),
-              ],
-            ),
-            child: Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(6),
-                  decoration: BoxDecoration(
-                    color: car.accentBlue,
-                    borderRadius: BorderRadius.circular(6),
-                  ),
-                  child: const Icon(Icons.navigation, color: Colors.white, size: 18),
-                ),
-                const SizedBox(width: 8),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Position GPS : ${car.gpsLatitude.toStringAsFixed(4)}, ${car.gpsLongitude.toStringAsFixed(4)}',
-                      style: TextStyle(
-                        color: car.textPrimary,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 11,
-                      ),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      'Altitude : ${car.gpsAltitude.round()}m • Cap : ${car.gpsHeading.round()}°',
-                      style: TextStyle(color: car.accentBlue, fontSize: 9, fontWeight: FontWeight.bold),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-        ),
-        Positioned(
-          right: 10,
-          bottom: 10,
-          child: Row(
-            children: [
-              Container(
-                width: 36,
-                height: 36,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: Colors.white,
-                  border: Border.all(color: Colors.red, width: 2.5),
-                ),
-                child: Center(
-                  child: Text(
-                    '${car.speedLimit}',
-                    style: const TextStyle(
-                      color: Colors.black,
-                      fontWeight: FontWeight.w900,
-                      fontSize: 13,
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 8),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                decoration: BoxDecoration(
-                  color: car.bgCard.withValues(alpha: 0.95),
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: car.borderGlow),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  children: [
-                    Text(
-                      '${car.speed.round()} KM/H GPS',
-                      style: TextStyle(
-                        color: car.isLightMode ? const Color(0xFF059669) : Colors.greenAccent,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 11,
-                      ),
-                    ),
-                    Text('Précision Satellite', style: TextStyle(color: car.textSecondary, fontSize: 9)),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-
-  // 6. VEHICLE DIAGNOSTICS & TPMS
+  // 7. VEHICLE DIAGNOSTICS & TPMS
   Widget _buildDiagnostics(BuildContext context, CarState car) {
     return SingleChildScrollView(
       padding: const EdgeInsets.all(12),
@@ -1047,7 +1305,7 @@ class CarDisplayView extends StatelessWidget {
     );
   }
 
-  // 7. MERCEDES NTG CLASSIC CAROUSEL
+  // 8. MERCEDES NTG CLASSIC CAROUSEL
   Widget _buildNtgClassic(BuildContext context, CarState car) {
     return Center(
       child: Column(
@@ -1157,6 +1415,14 @@ class CarDisplayView extends StatelessWidget {
             _dockButton(
               context,
               car,
+              icon: Icons.radio,
+              label: 'Radios',
+              isSelected: car.displayMode == CarDisplayMode.radioMusic,
+              onTap: () => car.setDisplayMode(CarDisplayMode.radioMusic),
+            ),
+            _dockButton(
+              context,
+              car,
               icon: Icons.video_library,
               label: 'Vidéos',
               isSelected: car.displayMode == CarDisplayMode.videoPlayer,
@@ -1225,44 +1491,4 @@ class CarDisplayView extends StatelessWidget {
       ),
     );
   }
-}
-
-class _AdvancedMapPainter extends CustomPainter {
-  final bool isLightMode;
-  _AdvancedMapPainter({this.isLightMode = true});
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final roadPaint = Paint()
-      ..color = isLightMode ? const Color(0xFF94A3B8) : const Color(0xFF222C3D)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 28
-      ..strokeCap = StrokeCap.round;
-
-    final routePathPaint = Paint()
-      ..color = const Color(0xFF0070F3)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 10
-      ..strokeCap = StrokeCap.round;
-
-    final path = Path();
-    path.moveTo(size.width * 0.1, size.height * 0.9);
-    path.quadraticBezierTo(size.width * 0.4, size.height * 0.7, size.width * 0.5, size.height * 0.4);
-    path.quadraticBezierTo(size.width * 0.6, size.height * 0.2, size.width * 0.85, size.height * 0.15);
-
-    canvas.drawPath(path, roadPaint);
-    canvas.drawPath(path, routePathPaint);
-
-    final carPoint = Offset(size.width * 0.4, size.height * 0.65);
-    final pinGlow = Paint()
-      ..color = const Color(0xFF0070F3).withValues(alpha: 0.4)
-      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 10);
-    canvas.drawCircle(carPoint, 16, pinGlow);
-
-    final pinPaint = Paint()..color = Colors.white;
-    canvas.drawCircle(carPoint, 7, pinPaint);
-  }
-
-  @override
-  bool shouldRepaint(covariant _AdvancedMapPainter oldDelegate) => oldDelegate.isLightMode != isLightMode;
 }
